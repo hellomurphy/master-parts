@@ -190,11 +190,14 @@ export default {
   methods: {
     initialize() {
       const newParts = [];
+      const tempCurrentParts = this.currentParts && [...this.currentParts];
 
-      this.parts.forEach((part) => {
+      console.log(tempCurrentParts)
+
+      this.parts.forEach((part, partIdx) => {
         const partObject = { current: part };
         this.parts.forEach((p) => {
-          partObject[p] = 0;
+          partObject[p] = 0
         });
         newParts.push(partObject);
       });
@@ -288,12 +291,14 @@ export default {
       return { headers, currentParts };
     },
 
-    generateResult(headers, currentParts) {
+    generateResult(headers, currentParts, parts) {
       const dataToSend = [headers.slice(0, -1).map((header) => header.title)];
 
       currentParts.forEach((part) => {
         const rowData = [part.current];
-        rowData.push(part.A, part.B, part.C);
+        parts.forEach((partKey) => {
+          rowData.push(part[partKey] || "0");
+        });
         dataToSend.push(rowData);
       });
 
@@ -314,8 +319,7 @@ export default {
           },
         });
 
-        const { headers, currentParts } =
-          this.initialFromUpload(response.data);
+        const { headers, currentParts } = this.initialFromUpload(response.data);
         this.haders = headers;
         this.currentParts = currentParts;
 
@@ -326,8 +330,10 @@ export default {
     },
 
     async exportExcel() {
-      const dataToSend = this.generateResult(this.headers, this.currentParts);
+      const dataToSend = this.generateResult(this.headers, this.currentParts, this.parts);
       const URL = "http://localhost:8000";
+
+      console.log(dataToSend);
 
       try {
         const response = await axios.post(`${URL}/generate_excel`, dataToSend, {
