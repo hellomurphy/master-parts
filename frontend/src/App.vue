@@ -4,13 +4,11 @@
       <v-container class="fill-height">
         <v-responsive class="align-center fill-height">
           <div class="text-center">
-            <v-btn @click="importExcel" prepend-icon="mdi-check-circle">
-              <template v-slot:prepend>
-                <v-icon color="success"></v-icon>
-              </template>
-
-              Import Excel
-            </v-btn>
+            <v-file-input
+              label="File input"
+              variant="outlined"
+              @change="importExcel"
+            ></v-file-input>
 
             <v-btn @click="exportExcel" prepend-icon="mdi-check-circle">
               <template v-slot:prepend>
@@ -265,6 +263,31 @@ export default {
       this.close();
     },
 
+    initialFromUpload(data) {
+      const headersRow = data[0];
+      const headers = headersRow.map((header) => {
+        return {
+          title: header === null ? "" : header,
+          key: header === null ? "current" : header,
+        };
+      });
+
+      headers.push({
+        title: "Edit Part",
+        key: "actions",
+      });
+
+      const currentParts = data.slice(1).map((row) => {
+        const currentPart = { current: row[0] };
+        for (let i = 1; i < row.length; i++) {
+          currentPart[headers[i].key] = String(row[i]);
+        }
+        return currentPart;
+      });
+
+      return { headers, currentParts };
+    },
+
     generateResult(headers, currentParts) {
       const dataToSend = [headers.slice(0, -1).map((header) => header.title)];
 
@@ -277,14 +300,36 @@ export default {
       return dataToSend;
     },
 
-    async importExcel() {},
+    async importExcel(event) {
+      const file = event.target.files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const URL = "http://localhost:8000";
+
+      try {
+        const response = await axios.post(`${URL}/upload_excel`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        const { headers, currentParts } =
+          this.initialFromUpload(response.data);
+        this.haders = headers;
+        this.currentParts = currentParts;
+
+        console.log(headers);
+      } catch (err) {
+        console.error("Error uploading Excel file:", err);
+      }
+    },
 
     async exportExcel() {
       const dataToSend = this.generateResult(this.headers, this.currentParts);
-      const URL = "http://127.0.0.1:8000";
+      const URL = "http://localhost:8000";
 
       try {
-
         const response = await axios.post(`${URL}/generate_excel`, dataToSend, {
           responseType: "blob",
         });

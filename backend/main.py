@@ -1,9 +1,8 @@
-from fastapi import FastAPI, HTTPException
-from openpyxl import Workbook
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from openpyxl import Workbook, load_workbook
 from tempfile import NamedTemporaryFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 from typing import List, Union
 
@@ -41,3 +40,23 @@ async def generate_excel(data: List[List[Union[str, int]]]):
 
         # Return the Excel file as a streaming response
         return StreamingResponse(open(file_path, "rb"), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    
+@app.post("/upload_excel")
+async def upload_excel(file: UploadFile = File(...)):
+    # Save the uploaded Excel file to a temporary location
+    with NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+        file_content = await file.read()
+        tmp.write(file_content)
+        tmp.close()
+
+    # Load the Excel file
+    wb = load_workbook(tmp.name)
+    ws = wb.active
+
+    # Initialize an empty list to store the data
+    excel_data = []
+    # Iterate over the rows in the worksheet and extract data
+    for row in ws.iter_rows(values_only=True):
+        excel_data.append(list(row))
+
+    return JSONResponse(content=excel_data)
